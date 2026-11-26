@@ -23,7 +23,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem(savedKey, JSON.stringify(liked)); }, [liked]);
   useEffect(() => { if (audio.current) audio.current.volume = volume; }, [volume]);
 
-  async function play(track: Track, upcoming?: Track[]) {
+  async function play(track: Track, upcoming?: Track[], fromQueue = false) {
+    if (!fromQueue) musicApi.resetRadioQueue();
     setCurrent(track);
     setPlaying(false);
     setBusy(true);
@@ -57,7 +58,7 @@ export default function App() {
     if (queue.length) {
       const [head, ...rest] = queue;
       setQueue(rest);
-      void play(head, rest);
+      void play(head, rest, true);
       return;
     }
     if (!current) return;
