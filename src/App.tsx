@@ -209,6 +209,7 @@ export default function App() {
     try {
       const result = await musicApi.search(query.trim());
       setTracks(result.tracks);
+      if (result.notice) setError(result.notice);
       if (!result.tracks.length) setError("No tracks found. Try another search.");
     } catch (e) { setError(e instanceof Error ? e.message : "Search failed."); setTracks([]); }
     finally { setBusy(false); }
