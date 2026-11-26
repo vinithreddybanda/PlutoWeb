@@ -53,11 +53,16 @@ function parseTracks(data: any): Track[] {
 
 export class YouTubeMusicWeb {
   private async request<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-    const response = await fetch(`${API}/${endpoint}?prettyPrint=false`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...CLIENT, ...body })
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API}/${endpoint}?prettyPrint=false`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...CLIENT, ...body })
+      });
+    } catch {
+      throw new Error("The browser could not reach YouTube Music directly. Its API may be blocking cross-origin requests (CORS). No proxy is configured in PlutoWeb.");
+    }
     if (!response.ok) throw new Error(`YouTube Music returned ${response.status}`);
     return response.json() as Promise<T>;
   }
