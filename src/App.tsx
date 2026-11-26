@@ -66,7 +66,7 @@ export default function App() {
     try {
       const recommendations = await musicApi.next(current.videoId, current.playlistId);
       const candidates = recommendations.filter(t => t.videoId !== current.videoId);
-      if (candidates[0]) void play(candidates[0], candidates.slice(1));
+      if (candidates[0]) void play(candidates[0], candidates.slice(1), true);
       else setError("No next recommendations were returned.");
     } catch (e) { setError(e instanceof Error ? e.message : "Couldn't load next songs."); }
     finally { setBusy(false); }
