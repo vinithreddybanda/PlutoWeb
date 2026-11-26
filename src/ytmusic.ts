@@ -1,5 +1,6 @@
 import type { SearchResult, Track } from "./types";
 import { innertubePost } from "./core/innertube";
+const YOUTUBE_BRIDGE = (import.meta.env.VITE_YTMUSIC_API_URL || "").replace(/\/+$/, "");
 import { audiusProvider, type MusicProvider } from "./core/providers";
 import { continueQueue, getRelatedTracks, getRadioQueue, type QueuePage } from "./core/queue";
 
@@ -62,6 +63,12 @@ export class YouTubeMusicProvider implements MusicProvider {
   async radio(videoId: string): Promise<QueuePage> { return getRadioQueue(videoId); }
   async continueRadio(page: QueuePage): Promise<QueuePage> { return continueQueue(page); }
   async stream(track: Track): Promise<string> {
+    if (YOUTUBE_BRIDGE) {
+      const response = await fetch(`${YOUTUBE_BRIDGE}/api/stream/${encodeURIComponent(track.videoId)}`);
+      const payload = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error || `YouTube stream resolution failed (${response.status}).`);
+      return payload.url;
+    }
     const data = await innertubePost<AnyRecord>("player", {
       videoId: track.videoId, playbackContext: { contentPlaybackContext: { signatureTimestamp: 0 } }
     });
