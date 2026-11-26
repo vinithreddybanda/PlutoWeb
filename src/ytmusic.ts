@@ -55,7 +55,7 @@ export class YouTubeMusicWeb {
   private async request<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
     const response = await fetch(`${API}/${endpoint}?prettyPrint=false`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Origin": ORIGIN },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...CLIENT, ...body })
     });
     if (!response.ok) throw new Error(`YouTube Music returned ${response.status}`);
