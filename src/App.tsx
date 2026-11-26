@@ -15,7 +15,7 @@ const isYoutubeTrack = (track: Track | null | undefined) => Boolean(track && (tr
 type YouTubePlayerEvent = { data: number; target: YouTubePlayer };
 type YouTubePlayer = {
   playVideo(): void; pauseVideo(): void; seekTo(seconds: number, allowSeekAhead: boolean): void;
-  getCurrentTime(): number; getDuration(): number; destroy(): void;
+  getCurrentTime(): number; getDuration(): number; setVolume(volume: number): void; destroy(): void;
 };
 type YouTubeApi = { Player: new (element: HTMLElement, options: Record<string, unknown>) => YouTubePlayer };
 declare global {
@@ -49,7 +49,7 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem(likedKey, JSON.stringify(liked)); }, [liked]);
   useEffect(() => { localStorage.setItem(queueKey, JSON.stringify(queue)); }, [queue]);
-  useEffect(() => { if (audio.current) audio.current.volume = volume; }, [volume]);
+  useEffect(() => { if (audio.current) audio.current.volume = volume; youtubePlayer.current?.setVolume(volume * 100); }, [volume]);
 
   const resolve = useCallback(async (track: Track) => {
     const cached = preloadCache.current.get(track.videoId);
