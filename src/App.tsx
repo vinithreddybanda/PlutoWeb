@@ -10,6 +10,7 @@ const safeRead = (key: string): Track[] => {
   catch { return []; }
 };
 type Tab = "home" | "search" | "library";
+const isYoutubeTrack = (track: Track | null | undefined) => Boolean(track && (track.source === "youtube" || (!track.source && !track.videoId.startsWith("audius:"))));
 
 type YouTubePlayerEvent = { data: number; target: YouTubePlayer };
 type YouTubePlayer = {
@@ -62,7 +63,7 @@ export default function App() {
     if (current && current.videoId !== track.videoId) history.current = [...history.current.slice(-49), current];
     setCurrent(track); setPlaying(false); setBusy(true); setError(""); setPosition(0); setDuration(track.durationSeconds || 0);
     if (upcoming) setQueue(upcoming);
-    if (track.source === "youtube") {
+    if (isYoutubeTrack(track)) {
       audio.current?.pause();
       if (audio.current) { audio.current.removeAttribute("src"); audio.current.load(); }
       if (current?.videoId === track.videoId && youtubePlayer.current) {
@@ -116,7 +117,7 @@ export default function App() {
   useEffect(() => { nextRef.current = () => { void next(); }; }, [next]);
 
   useEffect(() => {
-    if (!current || current.source !== "youtube") {
+    if (!current || !isYoutubeTrack(current)) {
       youtubePlayer.current?.destroy();
       youtubePlayer.current = null;
       return;
@@ -181,13 +182,13 @@ export default function App() {
   const previous = useCallback(() => {
     const previousTrack = history.current.pop();
     if (previousTrack) void play(previousTrack, queue, true);
-    else if (current?.source === "youtube" && youtubePlayer.current) youtubePlayer.current.seekTo(0, true);
+    else if (isYoutubeTrack(current) && youtubePlayer.current) youtubePlayer.current.seekTo(0, true);
     else if (audio.current) audio.current.currentTime = 0;
   }, [current, play, queue]);
 
   useEffect(() => {
     let cancelled = false;
-    const upcoming = queue.filter(track => track.source !== "youtube").slice(0, 2);
+    const upcoming = queue.filter(track => !isYoutubeTrack(track)).slice(0, 2);
     void Promise.all(upcoming.map(async track => {
       if (preloadCache.current.has(track.videoId)) return;
       try {
@@ -281,7 +282,7 @@ export default function App() {
         <button aria-label="Previous song" onClick={previous}><SkipBack size={17} fill="currentColor"/></button>
         <button className="main-play" aria-label={playing ? "Pause" : "Play"} onClick={()=>{if(current?.source === "youtube" && youtubePlayer.current){if(playing)youtubePlayer.current.pauseVideo();else youtubePlayer.current.playVideo();return;}if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play();}}>{busy ? <LoaderCircle className="spin"/> : playing ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor"/>}</button>
         <button aria-label="Next song" onClick={()=>void next()}><SkipForward size={17} fill="currentColor"/></button>
-      </div><div className="progress"><span>{formatTime(position)}</span><input aria-label="Seek" type="range" min="0" max={duration || 0} step=".1" value={Math.min(position,duration || position)} onChange={e=>{const value=Number(e.target.value);if(current?.source==="youtube" && youtubePlayer.current)youtubePlayer.current.seekTo(value,true);else if(audio.current)audio.current.currentTime=value;}}/><span>{duration ? formatTime(duration) : "--:--"}</span></div></div>
+      </div><div className="progress"><span>{formatTime(position)}</span><input aria-label="Seek" type="range" min="0" max={duration || 0} step=".1" value={Math.min(position,duration || position)} onChange={e=>{const value=Number(e.target.value);if(isYoutubeTrack(current) && youtubePlayer.current)youtubePlayer.current.seekTo(value,true);else if(audio.current)audio.current.currentTime=value;}}/><span>{duration ? formatTime(duration) : "--:--"}</span></div></div>
       <div className="player-right"><button className="queue-toggle" onClick={()=>setShowQueue(value=>!value)} aria-label="Toggle queue"><ListMusic size={18}/><span>{queue.length}</span></button><Volume2 size={17}/><input aria-label="Volume" type="range" min="0" max="1" step=".01" value={volume} onChange={e=>setVolume(Number(e.target.value))}/></div>
     </footer>
   </div>;
