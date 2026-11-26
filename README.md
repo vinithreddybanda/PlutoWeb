@@ -24,3 +24,11 @@ npm run build
 ## Status
 
 Initial application scaffold. API adapters are intentionally isolated so the browser request strategy can be verified without coupling it to the UI.
+
+## Current implementation
+
+The first scaffold includes the responsive player shell, song search UI, local liked-song storage, browser audio playback, Media Session controls, and a YouTube Music Innertube adapter for search, player and next-song requests.
+
+This is not feature parity yet. Direct browser requests must pass CORS, and YouTube Music can change its private API at any time. Stream URLs may also need signature deciphering. The exact SimpMusic queue, radio and recommendation algorithms still need to be ported from the Kotlin core and verified against the Android behavior before calling recommendations equivalent.
+
+No server or proxy has been added. The client reports a clear CORS error instead of silently routing requests through an untrusted third party.
