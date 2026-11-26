@@ -1,8 +1,9 @@
 import type { SearchResult, Track } from "./types";
 import { innertubePost } from "./core/innertube";
-const YOUTUBE_BRIDGE = (import.meta.env.VITE_YTMUSIC_API_URL || "").replace(/\/+$/, "");
 import { audiusProvider, type MusicProvider } from "./core/providers";
 import { continueQueue, getRelatedTracks, getRadioQueue, type QueuePage } from "./core/queue";
+
+const YOUTUBE_BRIDGE = (import.meta.env.VITE_YTMUSIC_API_URL || "").replace(/\/+$/, "");
 
 type AnyRecord = Record<string, any>;
 function text(value: any): string {
@@ -94,16 +95,25 @@ export const providerRegistry = new MusicProviderRegistry(audiusProvider, youtub
 
 export class PlutoMusicApi {
   async search(query: string): Promise<SearchResult> {
+    let youtubeError = "";
     try {
-      const result = await audiusProvider.search(query);
+      const result = await youtubeProvider.search(query);
       if (result.tracks.length) return result;
-      return await youtubeProvider.search(query);
     } catch (error) {
-      try { return await youtubeProvider.search(query); }
-      catch {
+      youtubeError = error instanceof Error ? error.message : "YouTube Music is unavailable.";
+    }
+
+    try {
+      const fallback = await audiusProvider.search(query);
+      if (fallback.tracks.length) return fallback;
+      if (youtubeError) throw new Error(`YouTube Music failed: ${youtubeError} Audius returned no tracks.`);
+      return fallback;
+    } catch (error) {
+      if (youtubeError) {
         const detail = error instanceof Error ? error.message : "Audius is unavailable.";
-        throw new Error(`Search failed. Audius: ${detail} YouTube Music may also be blocked by browser CORS.`);
+        throw new Error(`YouTube Music failed: ${youtubeError} Audius fallback failed: ${detail}`);
       }
+      throw error;
     }
   }
   private sourceOf(track: Track): "audius" | "youtube" {
