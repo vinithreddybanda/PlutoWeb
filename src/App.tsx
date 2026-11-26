@@ -143,17 +143,17 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="crumb">SimpMusic <span>/</span> {tab === "library" ? "Your library" : tab === "search" ? "Search" : "Listen now"}</div>
-        <div className="top-actions"><span className="status-dot"/> Browser player · Audius + YouTube</div>
+        <div className="top-actions"><span className="status-dot"/> Browser player · YouTube Music + Audius</div>
       </header>
       <section className="content">
         {tab === "home" && <div className="hero">
           <div className="eyebrow">YOUR MUSIC, YOUR WAY</div>
           <h1>Find your<br/><em>next favourite.</em></h1>
-          <p>Explore independent music and keep your listening queue moving.</p>
+          <p>Search YouTube Music first, with Audius as a fallback.</p>
           <form className="search-box" onSubmit={e => { e.preventDefault(); void search(); }}>
             <Search size={19}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Songs, artists, albums..." aria-label="Search music"/><button type="submit" disabled={busy}>Search</button>
           </form>
-          <div className="hero-foot"><span><Music2 size={14}/> Audius browser streaming · SimpMusic queue port</span><span>NO ACCOUNT REQUIRED TO EXPLORE</span></div>
+          <div className="hero-foot"><span><Music2 size={14}/> YouTube Music · Audius fallback · SimpMusic queue port</span><span>NO ACCOUNT REQUIRED TO EXPLORE</span></div>
         </div>}
         {tab === "search" && <div className="page-heading"><div><div className="eyebrow">DISCOVER</div><h2>Search music</h2></div><form className="search-box compact" onSubmit={e => {e.preventDefault();void search();}}><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="What do you want to hear?"/><button disabled={busy}>Search</button></form></div>}
         {tab === "library" && <div className="page-heading"><div><div className="eyebrow">COLLECTION</div><h2>Your library</h2><p>Your liked tracks, saved on this device.</p></div></div>}
