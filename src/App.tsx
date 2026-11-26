@@ -239,7 +239,7 @@ export default function App() {
         <div className="crumb">SimpMusic <span>/</span> {tab === "library" ? "Your library" : tab === "search" ? "Search" : "Listen now"}</div>
         <div className="top-actions"><span className="status-dot"/> Browser player · YouTube + Audius</div>
       </header>
-      {current?.source === "youtube" && <section className="youtube-player-shell"><div className="youtube-player-heading"><span className="eyebrow">YOUTUBE PLAYER</span><strong>{current.title}</strong></div><div className="youtube-player-host" ref={youtubeHost}/></section>}
+      {isYoutubeTrack(current) && <section className="youtube-player-shell"><div className="youtube-player-heading"><span className="eyebrow">YOUTUBE PLAYER</span><strong>{current.title}</strong></div><div className="youtube-player-host" ref={youtubeHost}/></section>}
       <section className="content">
         {tab === "home" && <div className="hero">
           <div className="eyebrow">YOUR MUSIC, YOUR WAY</div>
@@ -280,7 +280,7 @@ export default function App() {
       <div className="now-playing">{current ? <>{current.thumbnail && <img src={current.thumbnail} alt=""/>}<div><strong>{current.title}</strong><span>{current.artists}</span></div></> : <div className="placeholder-art"><Music2/></div>}</div>
       <div className="controls"><div className="control-buttons">
         <button aria-label="Previous song" onClick={previous}><SkipBack size={17} fill="currentColor"/></button>
-        <button className="main-play" aria-label={playing ? "Pause" : "Play"} onClick={()=>{if(current?.source === "youtube" && youtubePlayer.current){if(playing)youtubePlayer.current.pauseVideo();else youtubePlayer.current.playVideo();return;}if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play();}}>{busy ? <LoaderCircle className="spin"/> : playing ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor"/>}</button>
+        <button className="main-play" aria-label={playing ? "Pause" : "Play"} onClick={()=>{if(isYoutubeTrack(current) && youtubePlayer.current){if(playing)youtubePlayer.current.pauseVideo();else youtubePlayer.current.playVideo();return;}if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play();}}>{busy ? <LoaderCircle className="spin"/> : playing ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor"/>}</button>
         <button aria-label="Next song" onClick={()=>void next()}><SkipForward size={17} fill="currentColor"/></button>
       </div><div className="progress"><span>{formatTime(position)}</span><input aria-label="Seek" type="range" min="0" max={duration || 0} step=".1" value={Math.min(position,duration || position)} onChange={e=>{const value=Number(e.target.value);if(isYoutubeTrack(current) && youtubePlayer.current)youtubePlayer.current.seekTo(value,true);else if(audio.current)audio.current.currentTime=value;}}/><span>{duration ? formatTime(duration) : "--:--"}</span></div></div>
       <div className="player-right"><button className="queue-toggle" onClick={()=>setShowQueue(value=>!value)} aria-label="Toggle queue"><ListMusic size={18}/><span>{queue.length}</span></button><Volume2 size={17}/><input aria-label="Volume" type="range" min="0" max="1" step=".01" value={volume} onChange={e=>setVolume(Number(e.target.value))}/></div>
