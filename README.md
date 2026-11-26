@@ -4,8 +4,8 @@ A browser-first music client inspired by SimpMusic. Built with React, TypeScript
 
 ## Music sources
 
-- **Audius** works directly from the browser through its public API.
-- **YouTube Music** uses the WEB_REMIX InnerTube catalogue and queue endpoints through a small server-side bridge. Audio URL resolution is delegated to the current `yt-dlp` release, rather than assuming every InnerTube player response contains a ready-to-play URL.
+- **YouTube Music** is searched first. Its WEB_REMIX catalogue and queue endpoints run through a small server-side bridge. Audio URL resolution is delegated to the current `yt-dlp` release, rather than assuming every InnerTube player response contains a ready-to-play URL.
+- **Audius** is the fallback catalogue and streams directly from the browser through its public API.
 - The YouTube bridge is an unofficial integration with YouTube's internal endpoints. Those endpoints and extraction requirements can change; availability is not guaranteed.
 
 ## YouTube bridge deployment
