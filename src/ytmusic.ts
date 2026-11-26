@@ -72,21 +72,19 @@ export const providerRegistry = new MusicProviderRegistry(audiusProvider, youtub
 
 export class PlutoMusicApi {
   async search(query: string): Promise<SearchResult> {
+    let youtubeNotice = "No YouTube results were returned.";
     try {
       const result = await youtubeProvider.search(query);
       if (result.tracks.length) return result;
-    } catch (youtubeError) {
-      try {
-        const fallback = await audiusProvider.search(query);
-        if (fallback.tracks.length) return fallback;
-        throw youtubeError;
-      } catch (audiusError) {
-        const yt = youtubeError instanceof Error ? youtubeError.message : "YouTube search failed.";
-        const au = audiusError instanceof Error ? audiusError.message : "Audius search failed.";
-        throw new Error(`${yt} Audius fallback: ${au}`);
-      }
+    } catch (error) {
+      youtubeNotice = error instanceof Error ? error.message : "YouTube search is unavailable.";
     }
-    return audiusProvider.search(query);
+
+    const fallback = await audiusProvider.search(query);
+    if (fallback.tracks.length) {
+      return { ...fallback, notice: `${youtubeNotice} Showing Audius results instead.` };
+    }
+    throw new Error(`${youtubeNotice} Audius also returned no results.`);
   }
   private sourceOf(track: Track): "audius" | "youtube" {
     if (track.source) return track.source;
