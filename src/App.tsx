@@ -237,18 +237,18 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="crumb">SimpMusic <span>/</span> {tab === "library" ? "Your library" : tab === "search" ? "Search" : "Listen now"}</div>
-        <div className="top-actions"><span className="status-dot"/> Browser player · YouTube Music + Audius</div>
+        <div className="top-actions"><span className="status-dot"/> Browser player · YouTube + Audius</div>
       </header>
       {current?.source === "youtube" && <section className="youtube-player-shell"><div className="youtube-player-heading"><span className="eyebrow">YOUTUBE PLAYER</span><strong>{current.title}</strong></div><div className="youtube-player-host" ref={youtubeHost}/></section>}
       <section className="content">
         {tab === "home" && <div className="hero">
           <div className="eyebrow">YOUR MUSIC, YOUR WAY</div>
           <h1>Find your<br/><em>next favourite.</em></h1>
-          <p>Search YouTube Music first, with Audius as a fallback.</p>
+          <p>Search YouTube first, with Audius as a fallback.</p>
           <form className="search-box" onSubmit={e => { e.preventDefault(); void search(); }}>
             <Search size={19}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Songs, artists, albums..." aria-label="Search music"/><button type="submit" disabled={busy}>Search</button>
           </form>
-          <div className="hero-foot"><span><Music2 size={14}/> YouTube Music · Audius fallback · SimpMusic queue port</span><span>NO ACCOUNT REQUIRED TO EXPLORE</span></div>
+          <div className="hero-foot"><span><Music2 size={14}/> YouTube · Audius fallback · SimpMusic queue port</span><span>NO ACCOUNT REQUIRED TO EXPLORE</span></div>
         </div>}
         {tab === "search" && <div className="page-heading"><div><div className="eyebrow">DISCOVER</div><h2>Search music</h2></div><form className="search-box compact" onSubmit={e => {e.preventDefault();void search();}}><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="What do you want to hear?"/><button disabled={busy}>Search</button></form></div>}
         {tab === "library" && <div className="page-heading"><div><div className="eyebrow">COLLECTION</div><h2>Your library</h2><p>Your liked tracks, saved on this device.</p></div></div>}
@@ -259,7 +259,7 @@ export default function App() {
           {visible.length === 0 && !busy && <div className="empty"><ListMusic size={25}/><p>{tab === "library" ? "Your liked songs will appear here." : "Search for a song or artist to get started."}</p></div>}
           <div className="track-list">{visible.map((track, index) => <div className={"track-row " + (current?.videoId === track.videoId ? "selected" : "")} key={track.videoId}>
             <button className="cover" onClick={()=>void play(track, visible.slice(index + 1))}>{track.thumbnail ? <img src={track.thumbnail} alt=""/> : <span><Music2/></span>}<i><Play size={15} fill="currentColor"/></i></button>
-            <button className="track-meta" onClick={()=>void play(track, visible.slice(index + 1))}><strong>{track.title}</strong><span>{track.artists} · {track.source === "youtube" ? "YouTube Music" : "Audius"}</span></button>
+            <button className="track-meta" onClick={()=>void play(track, visible.slice(index + 1))}><strong>{track.title}</strong><span>{track.artists} · {track.source === "youtube" ? "YouTube" : "Audius"}</span></button>
             <span className="duration">{track.duration || ""}</span>
             <button className={"like-btn " + (isLiked(track) ? "liked" : "")} aria-label="Like song" onClick={()=>toggleLike(track)}><Heart size={17} fill={isLiked(track) ? "currentColor" : "none"}/></button>
             <button className="play-btn" aria-label="Add to queue" title="Add to queue" onClick={()=>addToQueue(track)}><ListMusic size={17}/></button>
