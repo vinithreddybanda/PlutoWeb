@@ -31,7 +31,7 @@ function bestThumbnail(thumbnails: AnyRecord[] | undefined): string | undefined 
   if (!thumbnails?.length) return undefined;
   return [...thumbnails].sort((a, b) =>
     (b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0)
-  ).at(-1)?.url ?? thumbnails[thumbnails.length - 1]?.url;
+  )[0]?.url ?? thumbnails[thumbnails.length - 1]?.url;
 }
 
 function musicVideoType(renderer: AnyRecord): string | undefined {
