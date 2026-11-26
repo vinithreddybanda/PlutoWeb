@@ -1,17 +1,21 @@
 # PlutoWeb
 
-A lightweight browser client for SimpMusic. PlutoWeb is a separate web application and does not modify the Android app.
+A browser-first music client inspired by SimpMusic. Built with React, TypeScript, Vite and the native HTML audio element.
 
-## Goals
+## Music sources
 
-- Reproduce the familiar SimpMusic listening workflow in a responsive browser UI.
-- Keep the client lightweight: React, TypeScript, Vite and native browser audio.
-- Keep playback, queue, search, lyrics, library and recommendation logic behind small adapters.
-- Reuse the same YouTube Music / Spotify data sources and port SimpMusic algorithms where browser access permits.
+- **Audius** is the primary browser-native catalogue and streaming provider. Search and recommendations use the Audius public API; audio is played through its stream endpoint.
+- **YouTube Music** remains an optional adapter and retains the WEB_REMIX queue/automix parsing port. Its internal endpoints are not a public API and may be blocked by browser CORS. Direct stream URLs can also require signature deciphering or PO-token handling, which this static browser build does not bypass.
 
-## Important architecture note
+The provider registry separates search, stream resolution and next-track discovery. Additional providers can be added without coupling them to the player UI.
 
-SimpMusic's existing core is Kotlin and is not directly executable in a browser. PlutoWeb must port the relevant algorithms and API request/signing logic to TypeScript, or call a browser-accessible service for operations that cannot run in the browser. YouTube Music's internal endpoints are not a stable public API and may reject cross-origin browser requests. Do not silently introduce a third-party proxy or claim full parity until the request path has been verified.
+## Playback
+
+- Native browser audio with Media Session metadata and lock-screen controls.
+- Persistent liked songs and queue.
+- Next-track pre-resolution for the first two queued tracks, with fresh resolution on playback failure.
+- Previous-track history, seeking, volume, and queue editing.
+- Audius similar-track discovery; YouTube Music automix queue logic remains available for YouTube-origin tracks.
 
 ## Development
 
@@ -21,14 +25,8 @@ npm run dev
 npm run build
 ```
 
-## Status
+## Hosting and limitations
 
-Initial application scaffold. API adapters are intentionally isolated so the browser request strategy can be verified without coupling it to the UI.
+The application is static and deploys to GitHub Pages. It does not run a server, proxy, or room coordinator. Browser CORS and provider-side rate limits still apply. Audius catalogue availability differs from mainstream commercial catalogues, and no provider guarantees every track is streamable in every browser.
 
-## Current implementation
-
-The first scaffold includes the responsive player shell, song search UI, local liked-song storage, browser audio playback, Media Session controls, and a YouTube Music Innertube adapter for search, player and next-song requests.
-
-This is not feature parity yet. Direct browser requests must pass CORS, and YouTube Music can change its private API at any time. Stream URLs may also need signature deciphering. The exact SimpMusic queue, radio and recommendation algorithms still need to be ported from the Kotlin core and verified against the Android behavior before calling recommendations equivalent.
-
-No server or proxy has been added. The client reports a clear CORS error instead of silently routing requests through an untrusted third party.
+OpenJam-style synchronized rooms require a separate realtime service and are intentionally not simulated with local-only state.
