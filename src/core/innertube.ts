@@ -1,4 +1,5 @@
 export const YOUTUBE_MUSIC_ORIGIN = "https://music.youtube.com";
+const YOUTUBE_BRIDGE = (import.meta.env.VITE_YTMUSIC_API_URL || "").replace(/\/+$/, "");
 export const YOUTUBE_MUSIC_API = `${YOUTUBE_MUSIC_ORIGIN}/youtubei/v1`;
 
 export const WEB_REMIX_CONTEXT = {
@@ -42,12 +43,12 @@ export async function innertubePost<T>(
   let response: Response;
   try {
     response = await fetch(
-      `${YOUTUBE_MUSIC_API}/${endpoint}?prettyPrint=false`,
+      YOUTUBE_BRIDGE ? `${YOUTUBE_BRIDGE}/api/innertube/${endpoint}` : `${YOUTUBE_MUSIC_API}/${endpoint}?prettyPrint=false`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-YouTube-Client-Name": "1",
+          "X-YouTube-Client-Name": "67",
           "X-YouTube-Client-Version": WEB_REMIX_CONTEXT.client.clientVersion
         },
         body: JSON.stringify({
