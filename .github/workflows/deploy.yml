@@ -23,6 +23,8 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run build
+        env:
+          VITE_YTMUSIC_API_URL: ${{ vars.VITE_YTMUSIC_API_URL }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
