@@ -126,7 +126,10 @@ export default function App() {
     const mount = () => {
       if (cancelled || !youtubeHost.current || !window.YT?.Player) return;
       youtubePlayer.current?.destroy();
-      youtubePlayer.current = new window.YT.Player(youtubeHost.current, {
+      youtubeHost.current.innerHTML = "";
+      const mountPoint = document.createElement("div");
+      youtubeHost.current.appendChild(mountPoint);
+      youtubePlayer.current = new window.YT.Player(mountPoint, {
         width: "100%",
         height: "225",
         videoId: current.videoId,
