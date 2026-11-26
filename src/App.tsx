@@ -131,13 +131,14 @@ export default function App() {
       const mountPoint = document.createElement("div");
       youtubeHost.current.appendChild(mountPoint);
       youtubePlayer.current = new window.YT.Player(mountPoint, {
-        width: "100%",
-        height: "225",
+        width: 640,
+        height: 225,
         videoId: current.videoId,
         playerVars: { autoplay: 1, playsinline: 1, origin: window.location.origin, enablejsapi: 1 },
         events: {
           onReady: (event: YouTubePlayerEvent) => {
             setBusy(false);
+            event.target.setVolume(volume * 100);
             event.target.playVideo();
             setDuration(event.target.getDuration() || 0);
           },
