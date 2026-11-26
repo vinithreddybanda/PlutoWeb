@@ -1,83 +1,60 @@
 import type { SearchResult, Track } from "./types";
-import { innertubePost } from "./core/innertube";
 import { audiusProvider, type MusicProvider } from "./core/providers";
-import { continueQueue, getRelatedTracks, getRadioQueue, type QueuePage } from "./core/queue";
 
-const YOUTUBE_BRIDGE = (import.meta.env.VITE_YTMUSIC_API_URL || "").replace(/\/+$/, "");
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || "";
+const YOUTUBE_API = "https://www.googleapis.com/youtube/v3";
 
-type AnyRecord = Record<string, any>;
-function text(value: any): string {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) return value.map(text).join("");
-  return value.simpleText ?? value.runs?.map((run: AnyRecord) => run.text).join("") ?? "";
-}
-function walk(value: any, visit: (node: AnyRecord) => void) {
-  if (!value || typeof value !== "object") return;
-  visit(value);
-  if (Array.isArray(value)) value.forEach(item => walk(item, visit));
-  else Object.values(value).forEach(item => walk(item, visit));
-}
-function parseTracks(data: any): Track[] {
-  const found = new Map<string, Track>();
-  walk(data, node => {
-    const renderer = node.musicResponsiveListItemRenderer ?? node.musicTwoRowItemRenderer ??
-      node.playlistPanelVideoRenderer ?? node.compactVideoRenderer;
-    if (!renderer) return;
-    const videoId = renderer.playlistItemData?.videoId ?? renderer.videoId;
-    if (!videoId || found.has(videoId)) return;
-    const flex = renderer.flexColumns ?? [];
-    const title = text(flex[0]?.musicResponsiveListItemFlexColumnRenderer?.text) || text(renderer.title) || "Unknown track";
-    const artists = text(flex[1]?.musicResponsiveListItemFlexColumnRenderer?.text) || text(renderer.shortBylineText) || "Unknown artist";
-    const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? renderer.thumbnail?.thumbnails ?? [];
-    const duration = text(renderer.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text) || text(renderer.lengthText);
-    found.set(videoId, {
-      videoId, title, artists, thumbnail: thumbs.at(-1)?.url, duration: duration || undefined,
-      playlistId: renderer.playlistId, source: "youtube",
-      musicVideoType: renderer.navigationEndpoint?.watchEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType,
-      isLive: (renderer.badges ?? []).some((badge: AnyRecord) => Boolean(badge.liveBadgeRenderer))
-    });
+type YouTubeVideo = {
+  id: { videoId?: string };
+  snippet: {
+    title: string;
+    channelTitle: string;
+    thumbnails?: { high?: { url: string }; medium?: { url: string }; default?: { url: string } };
+    publishedAt?: string;
+  };
+};
+
+async function youtubeSearch(query: string): Promise<Track[]> {
+  if (!YOUTUBE_API_KEY) {
+    throw new Error("YouTube search needs a YouTube Data API key. Add VITE_YOUTUBE_API_KEY in GitHub Actions Variables and redeploy Pages.");
+  }
+  const params = new URLSearchParams({
+    key: YOUTUBE_API_KEY,
+    part: "snippet",
+    type: "video",
+    maxResults: "25",
+    q: query,
+    videoEmbeddable: "true",
+    safeSearch: "none"
   });
-  return [...found.values()];
+  const response = await fetch(`${YOUTUBE_API}/search?${params}`);
+  const data = await response.json() as { items?: YouTubeVideo[]; error?: { message?: string } };
+  if (!response.ok) throw new Error(data.error?.message || `YouTube search failed (${response.status}).`);
+  return (data.items || []).flatMap(item => {
+    const videoId = item.id?.videoId;
+    if (!videoId) return [];
+    const snippet = item.snippet;
+    return [{
+      videoId,
+      title: snippet.title,
+      artists: snippet.channelTitle,
+      thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
+      source: "youtube" as const
+    }];
+  });
 }
 
 export class YouTubeMusicProvider implements MusicProvider {
   readonly id = "youtube";
-  private radioAudioOnly = false;
-  private activeRadioPage: QueuePage | null = null;
-  resetRadioQueue() { this.activeRadioPage = null; }
-  setRadioAudioOnly(enabled: boolean) { this.radioAudioOnly = enabled; }
   async search(query: string): Promise<SearchResult> {
-    const data = await innertubePost<AnyRecord>("search", { query, params: "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D" });
-    return { tracks: parseTracks(data) };
+    return { tracks: await youtubeSearch(query) };
   }
   async next(track: Track): Promise<Track[]> {
-    if (this.activeRadioPage?.continuation) {
-      const page = await continueQueue(this.activeRadioPage);
-      this.activeRadioPage = page;
-      return page.items;
-    }
-    const result = await getRelatedTracks(track.videoId, this.radioAudioOnly);
-    this.activeRadioPage = result.page;
-    return result.tracks;
+    const results = await youtubeSearch(`${track.artists} ${track.title} official audio`);
+    return results.filter(item => item.videoId !== track.videoId).slice(0, 12);
   }
-  async radio(videoId: string): Promise<QueuePage> { return getRadioQueue(videoId); }
-  async continueRadio(page: QueuePage): Promise<QueuePage> { return continueQueue(page); }
-  async stream(track: Track): Promise<string> {
-    if (YOUTUBE_BRIDGE) {
-      const response = await fetch(`${YOUTUBE_BRIDGE}/api/stream/${encodeURIComponent(track.videoId)}`);
-      const payload = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !payload.url) throw new Error(payload.error || `YouTube stream resolution failed (${response.status}).`);
-      return payload.url;
-    }
-    const data = await innertubePost<AnyRecord>("player", {
-      videoId: track.videoId, playbackContext: { contentPlaybackContext: { signatureTimestamp: 0 } }
-    });
-    const formats = [...(data.streamingData?.adaptiveFormats ?? []), ...(data.streamingData?.formats ?? [])];
-    const audio = formats.filter((x: AnyRecord) => x.mimeType?.startsWith("audio/") && Boolean(x.url))
-      .sort((a: AnyRecord, b: AnyRecord) => (b.bitrate ?? 0) - (a.bitrate ?? 0))[0];
-    if (!audio?.url) throw new Error("YouTube did not return a direct audio URL. Signature deciphering and PO-token handling are not available in this browser build.");
-    return audio.url;
+  stream(_track: Track): string {
+    throw new Error("YouTube tracks play through the official embedded YouTube player, not extracted audio URLs.");
   }
 }
 
@@ -95,26 +72,21 @@ export const providerRegistry = new MusicProviderRegistry(audiusProvider, youtub
 
 export class PlutoMusicApi {
   async search(query: string): Promise<SearchResult> {
-    let youtubeError = "";
     try {
       const result = await youtubeProvider.search(query);
       if (result.tracks.length) return result;
-    } catch (error) {
-      youtubeError = error instanceof Error ? error.message : "YouTube Music is unavailable.";
-    }
-
-    try {
-      const fallback = await audiusProvider.search(query);
-      if (fallback.tracks.length) return fallback;
-      if (youtubeError) throw new Error(`YouTube Music failed: ${youtubeError} Audius returned no tracks.`);
-      return fallback;
-    } catch (error) {
-      if (youtubeError) {
-        const detail = error instanceof Error ? error.message : "Audius is unavailable.";
-        throw new Error(`YouTube Music failed: ${youtubeError} Audius fallback failed: ${detail}`);
+    } catch (youtubeError) {
+      try {
+        const fallback = await audiusProvider.search(query);
+        if (fallback.tracks.length) return fallback;
+        throw youtubeError;
+      } catch (audiusError) {
+        const yt = youtubeError instanceof Error ? youtubeError.message : "YouTube search failed.";
+        const au = audiusError instanceof Error ? audiusError.message : "Audius search failed.";
+        throw new Error(`${yt} Audius fallback: ${au}`);
       }
-      throw error;
     }
+    return audiusProvider.search(query);
   }
   private sourceOf(track: Track): "audius" | "youtube" {
     if (track.source) return track.source;
@@ -128,6 +100,6 @@ export class PlutoMusicApi {
       ? youtubeProvider.next(track)
       : audiusProvider.next(track);
   }
-  resetRadioQueue() { youtubeProvider.resetRadioQueue(); }
+  resetRadioQueue() {}
 }
 export const musicApi = new PlutoMusicApi();
