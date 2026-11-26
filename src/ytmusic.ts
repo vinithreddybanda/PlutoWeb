@@ -25,7 +25,9 @@ async function youtubeSearch(query: string): Promise<Track[]> {
     maxResults: "50",
     q: query,
     videoEmbeddable: "true",
-    safeSearch: "none"
+    safeSearch: "none",
+    regionCode: "IN",
+    relevanceLanguage: "en"
   });
   const response = await fetch(`${YOUTUBE_API}/search?${params}`);
   const data = await response.json() as { items?: YouTubeVideo[]; error?: { message?: string } };
