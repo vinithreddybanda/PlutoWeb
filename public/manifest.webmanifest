@@ -1,0 +1,10 @@
+{
+  "name": "PlutoWeb",
+  "short_name": "PlutoWeb",
+  "description": "SimpMusic in your browser",
+  "start_url": "/PlutoWeb/",
+  "display": "standalone",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "icons": []
+}
