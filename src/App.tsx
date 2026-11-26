@@ -11,8 +11,24 @@ const safeRead = (key: string): Track[] => {
 };
 type Tab = "home" | "search" | "library";
 
+type YouTubePlayerEvent = { data: number; target: YouTubePlayer };
+type YouTubePlayer = {
+  playVideo(): void; pauseVideo(): void; seekTo(seconds: number, allowSeekAhead: boolean): void;
+  getCurrentTime(): number; getDuration(): number; destroy(): void;
+};
+type YouTubeApi = { Player: new (element: HTMLElement, options: Record<string, unknown>) => YouTubePlayer };
+declare global {
+  interface Window {
+    YT?: YouTubeApi;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
 export default function App() {
   const audio = useRef<HTMLAudioElement>(null);
+  const youtubeHost = useRef<HTMLDivElement>(null);
+  const youtubePlayer = useRef<YouTubePlayer | null>(null);
+  const nextRef = useRef<() => void>(() => {});
   const requestId = useRef(0);
   const preloadCache = useRef(new Map<string, string>());
   const history = useRef<Track[]>([]);
@@ -46,6 +62,17 @@ export default function App() {
     if (current && current.videoId !== track.videoId) history.current = [...history.current.slice(-49), current];
     setCurrent(track); setPlaying(false); setBusy(true); setError(""); setPosition(0); setDuration(track.durationSeconds || 0);
     if (upcoming) setQueue(upcoming);
+    if (track.source === "youtube") {
+      audio.current?.pause();
+      if (audio.current) { audio.current.removeAttribute("src"); audio.current.load(); }
+      if (current?.videoId === track.videoId && youtubePlayer.current) {
+        youtubePlayer.current.playVideo();
+        setBusy(false);
+      }
+      return;
+    }
+    youtubePlayer.current?.destroy();
+    youtubePlayer.current = null;
     try {
       const url = await resolve(track);
       if (id !== requestId.current || !audio.current) return;
@@ -86,15 +113,78 @@ export default function App() {
     finally { setBusy(false); }
   }, [current, queue, play]);
 
+  useEffect(() => { nextRef.current = () => { void next(); }; }, [next]);
+
+  useEffect(() => {
+    if (!current || current.source !== "youtube") {
+      youtubePlayer.current?.destroy();
+      youtubePlayer.current = null;
+      return;
+    }
+    let cancelled = false;
+    let poll: number | undefined;
+    const mount = () => {
+      if (cancelled || !youtubeHost.current || !window.YT?.Player) return;
+      youtubePlayer.current?.destroy();
+      youtubePlayer.current = new window.YT.Player(youtubeHost.current, {
+        width: "100%",
+        height: "225",
+        videoId: current.videoId,
+        playerVars: { autoplay: 1, playsinline: 1, origin: window.location.origin, enablejsapi: 1 },
+        events: {
+          onReady: (event: YouTubePlayerEvent) => {
+            setBusy(false);
+            event.target.playVideo();
+            setDuration(event.target.getDuration() || 0);
+          },
+          onStateChange: (event: YouTubePlayerEvent) => {
+            setPlaying(event.data === 1);
+            if (event.data === 0) nextRef.current();
+          },
+          onError: () => {
+            setBusy(false);
+            setPlaying(false);
+            setError("YouTube could not embed this video. Try another result.");
+          }
+        }
+      });
+      poll = window.setInterval(() => {
+        const player = youtubePlayer.current;
+        if (!player) return;
+        const time = player.getCurrentTime();
+        const total = player.getDuration();
+        if (Number.isFinite(time)) setPosition(time);
+        if (Number.isFinite(total) && total > 0) setDuration(total);
+      }, 500);
+    };
+    if (window.YT?.Player) mount();
+    else {
+      const existing = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]');
+      if (!existing) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(script);
+      }
+      window.onYouTubeIframeAPIReady = mount;
+    }
+    return () => {
+      cancelled = true;
+      if (poll !== undefined) window.clearInterval(poll);
+      youtubePlayer.current?.destroy();
+      youtubePlayer.current = null;
+    };
+  }, [current?.videoId, current?.source]);
+
   const previous = useCallback(() => {
     const previousTrack = history.current.pop();
     if (previousTrack) void play(previousTrack, queue, true);
+    else if (current?.source === "youtube" && youtubePlayer.current) youtubePlayer.current.seekTo(0, true);
     else if (audio.current) audio.current.currentTime = 0;
-  }, [play, queue]);
+  }, [current, play, queue]);
 
   useEffect(() => {
     let cancelled = false;
-    const upcoming = queue.slice(0, 2);
+    const upcoming = queue.filter(track => track.source !== "youtube").slice(0, 2);
     void Promise.all(upcoming.map(async track => {
       if (preloadCache.current.has(track.videoId)) return;
       try {
@@ -145,6 +235,7 @@ export default function App() {
         <div className="crumb">SimpMusic <span>/</span> {tab === "library" ? "Your library" : tab === "search" ? "Search" : "Listen now"}</div>
         <div className="top-actions"><span className="status-dot"/> Browser player · YouTube Music + Audius</div>
       </header>
+      {current?.source === "youtube" && <section className="youtube-player-shell"><div className="youtube-player-heading"><span className="eyebrow">YOUTUBE PLAYER</span><strong>{current.title}</strong></div><div className="youtube-player-host" ref={youtubeHost}/></section>}
       <section className="content">
         {tab === "home" && <div className="hero">
           <div className="eyebrow">YOUR MUSIC, YOUR WAY</div>
@@ -185,9 +276,9 @@ export default function App() {
       <div className="now-playing">{current ? <>{current.thumbnail && <img src={current.thumbnail} alt=""/>}<div><strong>{current.title}</strong><span>{current.artists}</span></div></> : <div className="placeholder-art"><Music2/></div>}</div>
       <div className="controls"><div className="control-buttons">
         <button aria-label="Previous song" onClick={previous}><SkipBack size={17} fill="currentColor"/></button>
-        <button className="main-play" aria-label={playing ? "Pause" : "Play"} onClick={()=>{if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play();}}>{busy ? <LoaderCircle className="spin"/> : playing ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor"/>}</button>
+        <button className="main-play" aria-label={playing ? "Pause" : "Play"} onClick={()=>{if(current?.source === "youtube" && youtubePlayer.current){if(playing)youtubePlayer.current.pauseVideo();else youtubePlayer.current.playVideo();return;}if(!audio.current)return;if(playing)audio.current.pause();else void audio.current.play();}}>{busy ? <LoaderCircle className="spin"/> : playing ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor"/>}</button>
         <button aria-label="Next song" onClick={()=>void next()}><SkipForward size={17} fill="currentColor"/></button>
-      </div><div className="progress"><span>{formatTime(position)}</span><input aria-label="Seek" type="range" min="0" max={duration || 0} step=".1" value={Math.min(position,duration || position)} onChange={e=>{if(audio.current)audio.current.currentTime=Number(e.target.value);}}/><span>{duration ? formatTime(duration) : "--:--"}</span></div></div>
+      </div><div className="progress"><span>{formatTime(position)}</span><input aria-label="Seek" type="range" min="0" max={duration || 0} step=".1" value={Math.min(position,duration || position)} onChange={e=>{const value=Number(e.target.value);if(current?.source==="youtube" && youtubePlayer.current)youtubePlayer.current.seekTo(value,true);else if(audio.current)audio.current.currentTime=value;}}/><span>{duration ? formatTime(duration) : "--:--"}</span></div></div>
       <div className="player-right"><button className="queue-toggle" onClick={()=>setShowQueue(value=>!value)} aria-label="Toggle queue"><ListMusic size={18}/><span>{queue.length}</span></button><Volume2 size={17}/><input aria-label="Volume" type="range" min="0" max="1" step=".01" value={volume} onChange={e=>setVolume(Number(e.target.value))}/></div>
     </footer>
   </div>;
