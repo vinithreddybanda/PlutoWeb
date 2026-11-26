@@ -99,9 +99,17 @@ export class PlutoMusicApi {
       }
     }
   }
-  async stream(track: Track): Promise<string> { return providerRegistry.get(track.source).stream(track); }
+  private sourceOf(track: Track): "audius" | "youtube" {
+    if (track.source) return track.source;
+    return track.videoId.startsWith("audius:") ? "audius" : "youtube";
+  }
+  async stream(track: Track): Promise<string> {
+    return providerRegistry.get(this.sourceOf(track)).stream(track);
+  }
   async next(track: Track): Promise<Track[]> {
-    return track.source === "youtube" ? youtubeProvider.next(track) : audiusProvider.next(track);
+    return this.sourceOf(track) === "youtube"
+      ? youtubeProvider.next(track)
+      : audiusProvider.next(track);
   }
   resetRadioQueue() { youtubeProvider.resetRadioQueue(); }
 }
