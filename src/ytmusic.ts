@@ -22,7 +22,7 @@ async function youtubeSearch(query: string): Promise<Track[]> {
     key: YOUTUBE_API_KEY,
     part: "snippet",
     type: "video",
-    maxResults: "25",
+    maxResults: "50",
     q: query,
     videoEmbeddable: "true",
     safeSearch: "none"
