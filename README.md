@@ -4,30 +4,33 @@ A browser-first music client inspired by SimpMusic. Built with React, TypeScript
 
 ## Music sources
 
-- **YouTube Music** is searched first. Its WEB_REMIX catalogue and queue endpoints run through a small server-side bridge. Audio URL resolution is delegated to the current `yt-dlp` release, rather than assuming every InnerTube player response contains a ready-to-play URL.
-- **Audius** is the fallback catalogue and streams directly from the browser through its public API.
-- The YouTube bridge is an unofficial integration with YouTube's internal endpoints. Those endpoints and extraction requirements can change; availability is not guaranteed.
+- **YouTube**: search uses the official YouTube Data API v3. Playback uses YouTube's official IFrame Player API, so audio stays inside YouTube's player and its playback, attribution, and content restrictions.
+- **Audius**: direct browser streaming through the public Audius API. Audius is the fallback when YouTube search is unavailable or returns no results.
 
-## YouTube bridge deployment
+YouTube videos that are not embeddable, region-restricted, private, age-restricted, or otherwise unavailable may not play. The app filters search results to embeddable videos, but YouTube remains the authority at playback time.
 
-GitHub Pages is static, so it cannot safely run the YouTube API calls or `yt-dlp`. Deploy the included bridge as a separate service:
+## GitHub Pages setup
 
-1. Open [Render](https://render.com/) and create a new Blueprint from this repository. Render detects `render.yaml` and builds `server/Dockerfile`.
-2. Wait for the service health check at `/health` to pass, then copy its public service URL.
-3. In the GitHub repository, open **Settings → Secrets and variables → Actions → Variables** and add `VITE_YTMUSIC_API_URL` with the Render service URL (no trailing slash).
-4. Run the **Deploy PlutoWeb** workflow again, or push a new commit. Vite embeds this variable into the static frontend at build time.
+GitHub Pages is static hosting. It cannot run a private backend, bypass browser CORS, or safely extract and host YouTube audio. PlutoWeb therefore uses the official browser APIs and needs no proxy server.
 
-The bridge exposes only the required `search`, `next`, `browse`, `player`, and audio-resolution routes. It does not accept arbitrary upstream URLs. `YT_PO_TOKEN` is an optional Render environment variable for deployments where yt-dlp reports that a PO token is required; use a token generated for the matching client/context and keep it private.
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select a project.
+2. Enable **YouTube Data API v3**.
+3. Create an API key. Restrict it to the YouTube Data API v3 and to your deployed website's HTTP referrers (for example, `https://vinithreddybanda.github.io/*`). If the project is deployed under a repository subpath, the referrer still uses the same host.
+4. In GitHub, open **Settings → Secrets and variables → Actions → Variables**.
+5. Add `VITE_YOUTUBE_API_KEY` with the API key as its value.
+6. Run **Deploy PlutoWeb** from Actions, or push a commit to `main`.
 
-The Render free instance may sleep when idle, so the first YouTube request can take longer after inactivity. For reliable always-on playback, use an always-on host. Do not commit cookies, PO tokens, or other credentials to this repository.
+Vite embeds this variable at build time. Changing the variable requires a new Pages build. The API key is visible in the browser by design for this client-side integration, so apply API and HTTP-referrer restrictions in Google Cloud.
+
+The YouTube Data API has quota limits. A search request consumes quota, so avoid rapid repeated searches. The API provides video search, not the complete YouTube Music catalogue; results are YouTube videos matching the query.
 
 ## Playback
 
-- Native browser audio with Media Session metadata and lock-screen controls.
-- Persistent liked songs and queue.
-- Next-track pre-resolution for the first two queued tracks, with fresh resolution on playback failure.
-- Previous-track history, seeking, volume, and queue editing.
-- Audius similar-track discovery; YouTube Music automix queue logic remains available for YouTube-origin tracks.
+- YouTube videos play through the visible, official YouTube embedded player.
+- Audius tracks use the native audio player.
+- Liked tracks and the queue are stored locally.
+- Media Session controls are available for native audio playback; embedded YouTube playback remains subject to browser and YouTube player controls.
+- Some YouTube videos cannot be embedded. Try another result when YouTube reports that a video is unavailable.
 
 ## Development
 
@@ -37,10 +40,8 @@ npm run dev
 npm run build
 ```
 
-For local YouTube playback, run the bridge from `server/` using Docker and set `VITE_YTMUSIC_API_URL` to its local URL before starting/building Vite. Without that variable, the app retains its browser-direct fallback, which may be blocked by CORS and may not resolve protected audio formats.
+For local development, set `VITE_YOUTUBE_API_KEY` in a local `.env` file (do not commit it), then run `npm run dev`.
 
-## Hosting and limitations
+## Why there is no YouTube audio extractor
 
-The frontend deploys to GitHub Pages. The bridge is a separate service and is not deployed by the Pages workflow. YouTube may change its internal API, require additional verification, or restrict requests by IP or region. This project does not guarantee uninterrupted access to every track. Audius remains available as a separate source.
-
-OpenJam-style synchronized rooms require a separate realtime service and are intentionally not simulated with local-only state.
+PlutoWeb does not download, re-host, proxy, or extract YouTube audio streams. A CORS proxy only changes where a browser request originates; it does not grant permission to access protected media, create PO tokens, or make every video playable. Using YouTube's embedded player is the supported route for YouTube playback. Direct audio streaming remains available from sources that authorize it, such as Audius.
