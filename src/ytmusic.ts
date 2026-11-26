@@ -64,6 +64,11 @@ function parseTracks(data: any): Track[] {
 
 export class YouTubeMusicWeb {
   private radioAudioOnly = false;
+  private activeRadioPage: QueuePage | null = null;
+
+  resetRadioQueue() {
+    this.activeRadioPage = null;
+  }
 
   setRadioAudioOnly(enabled: boolean) {
     this.radioAudioOnly = enabled;
@@ -79,7 +84,14 @@ export class YouTubeMusicWeb {
 
   /** Uses the same automix-following radio queue flow as core/service YouTube.next. */
   async next(videoId: string, _playlistId?: string): Promise<Track[]> {
+    if (this.activeRadioPage?.continuation) {
+      const page = await continueQueue(this.activeRadioPage);
+      this.activeRadioPage = page;
+      return page.items;
+    }
+
     const result = await getRelatedTracks(videoId, this.radioAudioOnly);
+    this.activeRadioPage = result.page;
     return result.tracks;
   }
 
