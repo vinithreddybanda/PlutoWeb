@@ -24,7 +24,7 @@ jobs:
       - run: npm install
       - run: npm run build
         env:
-          VITE_YTMUSIC_API_URL: ${{ vars.VITE_YTMUSIC_API_URL }}
+          VITE_YOUTUBE_API_KEY: ${{ vars.VITE_YOUTUBE_API_KEY }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
