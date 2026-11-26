@@ -4,4 +4,4 @@ export type Track = {
   duration?: string; durationSeconds?: number; playlistId?: string; musicVideoType?: string;
   counterpart?: Track; isLive?: boolean; source?: MusicSource; sourceId?: string;
 };
-export type SearchResult = { tracks: Track[]; continuation?: string };
+export type SearchResult = { tracks: Track[]; continuation?: string; notice?: string };
