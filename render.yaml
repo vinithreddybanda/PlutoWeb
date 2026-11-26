@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: plutoweb-youtube-bridge
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: ALLOWED_ORIGINS
+        value: "*"
